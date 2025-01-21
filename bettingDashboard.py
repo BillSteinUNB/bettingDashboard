@@ -4,21 +4,29 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 
-# Function to load data from Google Sheets
 def load_data():
-    # Google Sheets authentication
-    scope = ['https://spreadsheets.google.com/feeds',
-             'https://www.googleapis.com/auth/drive']
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(
-        'credentials.json', scope)
-    client = gspread.authorize(credentials)
+    try:
+        scope = ['https://spreadsheets.google.com/feeds',
+                 'https://www.googleapis.com/auth/drive']
+        
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(
+            'credentials.json', scope)
+        
+        client = gspread.authorize(credentials)
+        
+        # Print available spreadsheets to debug
+        spreadsheets = client.list_spreadsheet_files()
+        print("Available spreadsheets:", [s['name'] for s in spreadsheets])
+        
+        # Use the correct spreadsheet ID
+        SPREADSHEET_ID = '1rdz20jcWcYfnLu9a5TqkE94w06jYLaFPFD0bsX_6Yao'  # Remove 'Betting' from the end
+        sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+        
+        return pd.DataFrame(sheet.get_all_records())
     
-    # Open spreadsheet and sheet
-    sheet = client.open('Betting').sheet1
-    
-    # Get all data
-    data = sheet.get_all_records()
-    return pd.DataFrame(data)
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return pd.DataFrame()  # Return empty dataframe on error
 
 # Function to create visualizations
 def create_charts(df):
