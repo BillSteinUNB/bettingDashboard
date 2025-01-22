@@ -1,13 +1,13 @@
 {
   "dependencies": {
-    "@google-cloud/local-auth": "^3.0.1",
+    "@google-cloud/local-auth": "^3.0.0",
     "googleapis": "^144.0.0",
     "lucide-react": "^0.473.0",
-    "next": "^15.1.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "next": "^14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "scripts": {
-    "dev": "next dev"
+    "dev": "cd test && next dev"
   }
 }
