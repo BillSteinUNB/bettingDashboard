@@ -32,12 +32,16 @@ def load_data():
 def main():
     st.title("Betting Dashboard")
     
-    # Manual bankroll input in sidebar
-    st.sidebar.header("Bankroll Settings")
-    current_bankroll = st.sidebar.number_input("Current Bankroll ($)", value=300.00, step=10.0)
     
-    # Load data
     df = load_data()
+    
+    current_bankroll = df['Bankroll'].iloc[-1]  # Get latest bankroll value
+    
+    # Unit calculator in sidebar
+    st.sidebar.header("Unit Calculator") 
+    unit_amount = st.sidebar.number_input("Units", value=1.0, step=0.1)
+    unit_value = current_bankroll * (unit_amount/100)
+    st.sidebar.metric("Dollar Value", f"${unit_value:.2f}")
     
     # Calculate metrics
     total_bets = len(df)
