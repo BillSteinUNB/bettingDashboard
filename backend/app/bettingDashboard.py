@@ -4,45 +4,125 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta
 
+import gspread
+import pandas as pd
+from oauth2client.service_account import ServiceAccountCredentials
+
 def load_data():
     scope = ['https://spreadsheets.google.com/feeds',
              'https://www.googleapis.com/auth/drive']
-    
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(
-        'credentials.json', scope)
-    
+
+    credentials = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
     client = gspread.authorize(credentials)
     sheet = client.open('Betting ').sheet1
     
-    # Specify the headers we expect in row 2
-    expected_headers = ['Date', 'Game', 'Bet', 'Sport', 'Odds', 'Units', 
-                       'W_L_P', 'POTD', 'Bankroll', 'Unit_Results', 
-                       'Leg_or_No', 'Is_Parlay']
+    # 1) Read the single bankroll value from cell B1 (current bankroll)
+    bankroll_str = sheet.acell('B1').value
+    try:
+        current_bankroll_value = float(bankroll_str)
+    except ValueError:
+        current_bankroll_value = 0.0  # or handle error as you wish
     
+    # 2) Define your expected headers before calling get_all_records
+    expected_headers = [
+        'Date', 'Game', 'Bet', 'Sport', 'Odds', 'Units',
+        'W_L_P', 'POTD', 'Bankroll', 'Unit_Results',
+        'Leg_or_No', 'Is_Parlay'
+    ]
+    
+    # 3) Pull the main data & create df
     data = sheet.get_all_records(head=2, expected_headers=expected_headers)
     df = pd.DataFrame(data)
-    df['Date'] = pd.to_datetime(df['Date'])
-    
-    # Calculate dollar value of results for each bet
-    df['Unit_Value'] = df['Bankroll'] * 0.01  # 1% of bankroll at time of bet
-    df['Money_WL'] = df['Unit_Results'] * df['Unit_Value']  # Actual money won/lost
-    
-    return df
+
+    # 4) Convert columns
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df['Odds'] = pd.to_numeric(df['Odds'], errors='coerce')
+    df['Units'] = pd.to_numeric(df['Units'], errors='coerce')
+    df['Unit_Results'] = pd.to_numeric(df['Unit_Results'], errors='coerce')
+    df['Bankroll'] = pd.to_numeric(df['Bankroll'], errors='coerce')
+
+    # 5) Additional columns
+    df['Unit_Value'] = df['Bankroll'] * 0.01
+    df['Money_WL'] = df['Unit_Results'] * df['Unit_Value']
+
+    # 6) Return both
+    return df, current_bankroll_value
+
+def american_to_decimal(american_odds):
+    """
+    Convert American odds (e.g., +100, -125, +200) to decimal odds.
+    """
+    if american_odds > 0:
+        return american_odds / 100.0 + 1.0
+    elif american_odds < 0:
+        return 100.0 / abs(american_odds) + 1.0
+    else:
+        # If input is 0, treat as +100 (decimal 2.0) or handle as you prefer
+        return 2.0
+
 
 def main():
     st.title("Betting Dashboard")
     
     
-    df = load_data()
-    
-    current_bankroll = df['Bankroll'].iloc[-1]  # Get latest bankroll value
-    
+    df, current_bankroll = load_data()    
     # Unit calculator in sidebar
     st.sidebar.header("Unit Calculator") 
     unit_amount = st.sidebar.number_input("Units", value=1.0, step=0.1)
     unit_value = current_bankroll * (unit_amount/100)
     st.sidebar.metric("Dollar Value", f"${unit_value:.2f}")
-    
+
+        # 1) Add a new section in the sidebar
+    st.sidebar.header("Win X Units Calculator")
+
+    # 2) Let the user specify how many units they want to net
+    units_to_win = st.sidebar.number_input(
+        "Units to Win",
+        value=1.0,  # default
+        step=0.1,
+        key="units_to_win_calculator"
+    )
+
+    odds_format = st.sidebar.radio(
+        "Select Odds Format",
+        ["American", "Decimal"],
+        index=0,
+        key="odds_format"
+    )
+
+    if odds_format == "Decimal":
+        # Let the user input decimal odds
+        decimal_odds = st.sidebar.number_input(
+            "Bet Odds (Decimal)",
+            value=2.0,      # default to +100 in decimal form
+            step=0.01,
+            key="decimal_odds_input"
+        )
+    else:
+        # Let the user input American odds
+        american_odds = st.sidebar.number_input(
+            "Bet Odds (American)",
+            value=100,     # +100 is a common baseline
+            step=1,
+            key="american_odds_input"
+        )
+        # Convert to decimal behind the scenes
+        decimal_odds = american_to_decimal(american_odds)
+
+    # (D) Calculate the stake required
+    one_unit_value = current_bankroll * 0.01
+    desired_win_in_dollars = units_to_win * one_unit_value
+
+    # net_profit = stake * (decimal_odds - 1)
+    # stake = net_profit / (decimal_odds - 1)
+    if decimal_odds > 1:
+        stake_required = desired_win_in_dollars / (decimal_odds - 1)
+    else:
+        stake_required = 0.0
+    # Fix Display issuse should now go below + or - 100 -------------------------
+    # 5) Show the result
+    st.sidebar.metric("Stake Required", f"${stake_required:.2f}")
+
     # Calculate metrics
     total_bets = len(df)
     regular_bets = df[df['W_L_P'].isin(['w', 'l'])]
