@@ -1,2 +1,20 @@
-# bettingDashboard
- This is a project I plan to expand to eventually be a tracker for all my statistics on using currently Bet365 for sports gambling but ideally expanding to be multi network, Additonally I would like this to auto extrapolate to an excel sheet to then use a streamlit webapp to display it.
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
+
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/drive/1liVGMKlhgCiY_V8zsj46uy8_iblVxtn0
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
